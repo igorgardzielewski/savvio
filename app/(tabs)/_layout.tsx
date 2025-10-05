@@ -15,16 +15,25 @@ export default function TabLayout() {
                 options={{
                     title: 'Home',
                     tabBarIcon: ({ color }) => (
-                        <IconSymbol name="house.fill" size={24} color={color} />
+                        <IconSymbol name="house" size={24} color={color} />
                     ),
                 }}
             />
             <Tabs.Screen
                 name="explore"
                 options={{
-                    title: 'Explore',
+                    title: 'Transactions',
                     tabBarIcon: ({ color }) => (
-                        <IconSymbol name="paperplane.fill" size={24} color={color} />
+                        <IconSymbol name="creditcard" size={24} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="profile"
+                options={{
+                    title: 'Payments',
+                    tabBarIcon: ({ color }) => (
+                        <IconSymbol name="chart.pie" size={24} color={color} />
                     ),
                 }}
             />
