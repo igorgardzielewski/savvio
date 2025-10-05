@@ -22,6 +22,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
+      "bundler": "metro",
       "output": "static",
       "bundler": "metro",
       "favicon": "./assets/images/favicon.png"
@@ -44,6 +45,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a4942b37-f564-45d7-a873-7ea7d6e90859"
+      }
+    },
+    "owner": "igor_gardzielewski"
   }
 }
