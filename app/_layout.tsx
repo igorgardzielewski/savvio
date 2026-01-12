@@ -1,15 +1,15 @@
 // app/_layout.tsx
-import React from 'react';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack, useRouter, useSegments } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-import '../global.css';
-import { View, ActivityIndicator } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useFonts } from 'expo-font';
 import { useAuthStore } from '@/store/authStore';
 import { useUserStore } from "@/store/userStore";
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import React from 'react';
+import { ActivityIndicator, View } from 'react-native';
+import 'react-native-reanimated';
+import '../global.css';
 // Remove forced initialRouteName
 export const unstable_settings = {};
 
@@ -23,7 +23,7 @@ export default function RootLayout() {
         Sixtyfour: require('../assets/fonts/Sixtyfour.ttf'),
         Inter: require('../assets/fonts/Inter-VariableFont_opsz,wght.ttf'),
     });
-    const {setUser} = useUserStore();
+    const { setUser } = useUserStore();
 
     React.useEffect(() => {
         if (!fontsLoaded) return;
@@ -31,7 +31,8 @@ export default function RootLayout() {
         if (!isAuthenticated && !inAuthGroup) {
             router.replace('/(auth)/authPage');
         }
-    }, [isAuthenticated, segments, fontsLoaded, router]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isAuthenticated, segments, fontsLoaded]);
 
     if (!fontsLoaded) {
         return (
@@ -58,6 +59,8 @@ export default function RootLayout() {
                         <Stack.Screen name="(budget)" />
                         <Stack.Screen name="(aiassistant)" />
                         <Stack.Screen name="(addexpense)" />
+                        <Stack.Screen name="(profile)" />
+                        <Stack.Screen name="(family)" />
                         <Stack.Screen
                             name="modal"
                             options={{

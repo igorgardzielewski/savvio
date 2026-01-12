@@ -1,19 +1,23 @@
-import {Tabs, usePathname, useRouter} from 'expo-router';
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Pressable, Animated, Easing } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { CustomTabBar } from '@/components/ui/CustomTabBar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import {Text} from '@/components/ui/Text'
-import {useUserStore} from "@/store/userStore";
-import {useAuthStore} from "@/store/authStore";
+import { Text } from '@/components/ui/Text';
+import { useFamilyWebSocket } from '@/hooks/useFamilyWebSocket';
+import { useAuthStore } from "@/store/authStore";
+import { useUserStore } from "@/store/userStore";
+import { Tabs, usePathname, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 export default function TabLayout() {
     const [isExpanded, setIsExpanded] = useState(false);
     const widthAnim = useRef(new Animated.Value(56)).current;
     const pathname = usePathname();
     const router = useRouter();
-    const {setUser, isUserFetched} = useUserStore();
-    const {isAuthenticated, token, logout} = useAuthStore();
+    const { user, setUser, isUserFetched } = useUserStore();
+    const { isAuthenticated, token, logout } = useAuthStore();
+    const { getInitials } = require('@/helpers/stringHelpers');
+
+    useFamilyWebSocket();
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -32,7 +36,13 @@ export default function TabLayout() {
 
                 if (res.ok) {
                     const data = await res.json();
+                    console.log('Fetched user data:', data);
                     setUser(data);
+
+                    if (data.subscriptions && data.subscriptions.length > 0) {
+                        const { checkAndScheduleAllSubscriptionNotifications } = await import('@/helpers/notificationHelpers');
+                        await checkAndScheduleAllSubscriptionNotifications(data.subscriptions);
+                    }
                 } else {
                     logout();
                     router.replace('/(auth)/authPage');
@@ -43,8 +53,8 @@ export default function TabLayout() {
         };
 
         fetchUser();
-    }, [isAuthenticated, token, isUserFetched, setUser, logout, router]);
-
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isAuthenticated, token, isUserFetched]);
     useEffect(() => {
         Animated.timing(widthAnim, {
             toValue: isExpanded ? 160 : 56,
@@ -90,61 +100,65 @@ export default function TabLayout() {
             edges={['top', 'left', 'right']}
         >
             <View className={'flex flex-row items-center justify-between w-full'}>
-            <View className="flex flex-row items-end py-1 px-4 gap-4">
-                <Animated.View
-                    style={{
-                        width: widthAnim,
-                        backgroundColor: 'white',
-                        borderRadius: 9999,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'flex-end',
-                        padding: 4,
-                        gap: 8,
-                        shadowColor: '#000',
-                        shadowOpacity: 0.2,
-                        shadowRadius: 4,
-                    }}
-                >
-                    {isExpanded && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Pressable onPress={handleLogout}>
-                                <View className="rounded-full p-2 flex items-center justify-center">
-                                    <IconSymbol name="gear" size={28} color="#6b5aed" />
-                                </View>
-                            </Pressable>
-                            <Pressable onPress={() => console.log('Profile pressed')}>
-                                <View className="rounded-full p-2 flex items-center justify-center">
-                                    <IconSymbol name="person" size={28} color="#6b5aed" />
-                                </View>
-                            </Pressable>
-                        </View>
-                    )}
+                <View className="flex flex-row items-end py-1 px-4 gap-4">
+                    <Animated.View
+                        style={{
+                            width: widthAnim,
+                            backgroundColor: 'white',
+                            borderRadius: 9999,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            padding: 4,
+                            gap: 8,
+                            shadowColor: '#000',
+                            shadowOpacity: 0.2,
+                            shadowRadius: 4,
+                        }}
+                    >
+                        {isExpanded && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Pressable onPress={handleLogout}>
+                                    <View className="rounded-full p-2 flex items-center justify-center">
+                                        <IconSymbol name="rectangle.portrait.and.arrow.right" size={28} color="#6b5aed" />
+                                    </View>
+                                </Pressable>
+                                <Pressable onPress={() => router.push('/(profile)')}>
+                                    <View className="rounded-full p-2 flex items-center justify-center">
+                                        <IconSymbol name="person" size={28} color="#6b5aed" />
+                                    </View>
+                                </Pressable>
+                            </View>
+                        )}
 
-                    <Pressable onPress={() => setIsExpanded(!isExpanded)}>
-                        <Animated.Image
-                            source={{
-                                uri: 'https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d?auto=format&fit=crop&w=100&q=80',
-                            }}
-                            style={{
-                                width: 48,
-                                height: 48,
-                                borderRadius: 9999,
-                                borderColor: '#6b5aed',
-                                borderWidth: 2,
-                            }}
-                        />
-                    </Pressable>
-                </Animated.View>
-                <View>
-                    <Text className={`text-2xl font-bold ${headerContent.titleColor}`}>
-                        {headerContent.title}
-                    </Text>
-                    <Text className={`text-xl ${headerContent.subtitleColor}`}>
-                        {headerContent.subtitle}
-                    </Text>
+                        <Pressable onPress={() => setIsExpanded(!isExpanded)}>
+                            <View
+                                style={{
+                                    width: 48,
+                                    height: 48,
+                                    borderRadius: 9999,
+                                    borderColor: user?.premium ? '#6b5aed' : '#9CA3AF',
+                                    borderWidth: 2,
+                                    backgroundColor: user?.premium ? '#e0e7ff' : '#D1D5DB',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                            >
+                                <Text className={` ${user?.premium ? 'text-[#6b5aed]' : 'text-[#6B7280]'} font-bold text-xl`}>
+                                    {getInitials(user?.name, user?.email)}
+                                </Text>
+                            </View>
+                        </Pressable>
+                    </Animated.View>
+                    <View>
+                        <Text className={`text-2xl font-bold ${headerContent.titleColor}`}>
+                            {headerContent.title}
+                        </Text>
+                        <Text className={`text-xl ${headerContent.subtitleColor}`}>
+                            {headerContent.subtitle}
+                        </Text>
+                    </View>
                 </View>
-            </View>
             </View>
 
             <Tabs

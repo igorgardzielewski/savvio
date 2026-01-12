@@ -3,7 +3,6 @@ import {
     View,
     TouchableOpacity,
     Image,
-    StyleSheet,
     TextInput,
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -38,7 +37,7 @@ export default function AuthPage() {
      const [showSuccess, setShowSuccess] = useState(false);
     const inputsRef = useRef<(TextInput | null)[]>([]);
     const scaleAnim = useRef(new Animated.Value(0)).current;
-    const { login, register, loading, error, errorFields, clearError, clearFieldErrors, resendVerification, isAuthenticated, needsVerification, pendingEmail } = useAuthStore();
+    const { login, register, loading, error, errorFields, clearError, clearFieldErrors, resendVerification, isAuthenticated, needsVerification, pendingEmail, googleSignIn } = useAuthStore();
 
     useEffect(() => {
         clearError();
@@ -146,12 +145,29 @@ export default function AuthPage() {
                             <Text className="text-white text-3xl font-bold">Success!</Text>
                         </View>
                     ) : !isIntroDone ? (
-                        <View className="gap-4 flex w-full bg-accent items-center p-6">
-                            <Image source={require('@/assets/images/apppreview.jpg')} style={[styles.previewImage, { width: 250, height: 250 }]} resizeMode="contain" />
-                            <SafeAreaView edges={["bottom"]} className="gap-4 flex w-full">
+                        <View className="flex-1 w-full bg-accent items-center justify-end">
+                            <View
+                                style={{
+                                    width: '100%',
+                                    height: 480, // Wysokość widocznej części obrazu
+                                    overflow: 'hidden',
+                                    opacity: 0.8
+                                }}
+                            >
+                                <Image
+                                    source={require('@/assets/images/phoneappview2.png')}
+                                    style={{
+                                        width: '100%',
+                                        height: undefined,
+                                        aspectRatio: 0.5
+                                    }}
+                                    resizeMode="contain"
+                                />
+                            </View>
+                            <SafeAreaView edges={["bottom"]} className="gap-4 flex w-full bg-accent px-6 py-2 pb-6">
                                 <View>
                                     <Text className="text-left font-bold text-white text-4xl leading-tight">
-                                        Welcome to Savvio{"\n"}Your Finance App{"\n"}to control your money
+                                        Welcome to Savvio{"\n"}Your Finance App
                                     </Text>
                                     <Text className="text-left font-semibold text-white/80 text-xl mt-2 leading-7">
                                         Savvio is an app directed to help you manage your finances effortlessly.
@@ -367,7 +383,19 @@ export default function AuthPage() {
                                                     <Text className="text-center text-sm text-gray-500">Already have an account? <Text className="font-semibold text-accent">Login here</Text></Text>
                                                 </TouchableOpacity>
                                             )}
-
+                                            {mode === 'login' &&
+                                                <>
+                                                    <View className={'h-1 border-t border-gray-200 mx-6'}/>
+                                                    <TouchableOpacity
+                                                        className={`rounded-full py-4 border-gray-300 border-2 items-center justify-center flex-row gap-2 ${loading ? 'opacity-50' : ''}`}
+                                                        onPress={googleSignIn}
+                                                        disabled={loading}
+                                                    >
+                                                        <Ionicons name="logo-google" size={20} color="#4285F4" />
+                                                        <Text className={'font-semibold text-heading'} >Kontynuuj z Google</Text>
+                                                    </TouchableOpacity>
+                                                </>
+                                            }
                                         </View>
                                     </ScrollView>
                                 )}
@@ -377,12 +405,6 @@ export default function AuthPage() {
                 </View>
             </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
-     );
+);
  }
 
-const styles = StyleSheet.create({
-    previewImage: {
-        aspectRatio: 1,
-        borderRadius: 999,
-    },
-});

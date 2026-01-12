@@ -1,6 +1,6 @@
-import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
 import { useUserStore } from "./userStore";
 export type AuthState = {
     token: string | null;
@@ -21,15 +21,51 @@ export type AuthState = {
     ) => Promise<void>;
     verify: (email: string, code: string) => Promise<void>;
     resendVerification: (email: string) => Promise<void>;
+    googleSignIn: () => Promise<void>;
     logout: () => void;
     clearError: () => void;
     clearFieldErrors: () => void;
+    refreshToken: () => Promise<boolean>;
+    checkAndRefreshToken: () => Promise<boolean>;
 };
 
 const AUTH_LOGIN_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/auth/login`;
 const AUTH_REGISTER_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/auth/register`;
 const AUTH_VERIFY_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/auth/verify-email`;
 const AUTH_RESEND_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/auth/resend-verification`;
+const AUTH_GOOGLE_SIGNIN_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/auth/google-signin`;
+const AUTH_REFRESH_TOKEN_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/auth/refresh-token`;
+
+const decodeJWT = (token: string): { exp?: number } | null => {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+            atob(base64)
+                .split('')
+                .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                .join('')
+        );
+        return JSON.parse(jsonPayload);
+    } catch {
+        return null;
+    }
+};
+
+const isTokenExpiringSoon = (token: string, hoursThreshold: number = 1): boolean => {
+    const decoded = decodeJWT(token);
+    if (!decoded?.exp) return true;
+    const expirationTime = decoded.exp * 1000;
+    const now = Date.now();
+    const threshold = hoursThreshold * 60 * 60 * 1000;
+    return expirationTime - now < threshold;
+};
+
+const isTokenExpired = (token: string): boolean => {
+    const decoded = decodeJWT(token);
+    if (!decoded?.exp) return true;
+    return decoded.exp * 1000 < Date.now();
+};
 
 export const useAuthStore = create<AuthState>()(
     persist(
@@ -72,7 +108,6 @@ export const useAuthStore = create<AuthState>()(
                                 return acc;
                             }, {});
                         }
-                        console.log('Setting error:', message, 'fieldErrors:', fieldErrors);
                         set({ error: message, errorFields: fieldErrors, isAuthenticated: false, needsVerification: false, pendingEmail: null, token: null });
                         return;
                     }
@@ -165,9 +200,7 @@ export const useAuthStore = create<AuthState>()(
                         set({ error: message, errorFields: fieldErrors });
                         return;
                     }
-                    // Success: mark verified and authenticate
-                    const currentUser = useUserStore.getState().user || {};
-                    useUserStore.getState().setUser({ ...currentUser, emailVerified: true });
+                    useUserStore.getState().updateUser({ emailVerified: true });
                     set({ isAuthenticated: true, needsVerification: false, error: null });
                 } catch (e: any) {
                     set({ error: e.message || 'Unexpected verify error' });
@@ -199,6 +232,100 @@ export const useAuthStore = create<AuthState>()(
                 }
             },
 
+            googleSignIn: async () => {
+                set({ loading: true, error: null, errorFields: null });
+                try {
+                    const { signInWithGoogle } = await import('@/helpers/googleSignInHelpers');
+                    const result = await signInWithGoogle();
+
+                    if (!result.success) {
+                        set({ error: result.error || 'Google Sign-In failed', isAuthenticated: false });
+                        return;
+                    }
+
+                    const res = await fetch(AUTH_GOOGLE_SIGNIN_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ idToken: result.idToken, accessToken: result.accessToken, refreshToken: result.refreshToken, tokenExpiry: result.expiresAt, gmailAccessGranted: result.hasEmailScope }),
+                    });
+                    const data = await res.json().catch(() => null);
+
+                    if (!res.ok) {
+                        let message = data?.message || 'Google Sign-In backend error';
+                        set({ error: message, isAuthenticated: false });
+                        return;
+                    }
+
+                    set({
+                        token: data.token || null,
+                        isAuthenticated: true,
+                        needsVerification: false,
+                        pendingEmail: null,
+                    });
+                    useUserStore.getState().setUser(data.user || result.user);
+                } catch (e: any) {
+                    set({ error: e.message || 'Unexpected Google Sign-In error', isAuthenticated: false });
+                } finally {
+                    set({ loading: false });
+                }
+            },
+
+            refreshToken: async () => {
+                const currentToken = get().token;
+                if (!currentToken) {
+                    get().logout();
+                    return false;
+                }
+
+                try {
+                    const res = await fetch(AUTH_REFRESH_TOKEN_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${currentToken}`,
+                        },
+                    });
+
+                    if (!res.ok) {
+                        get().logout();
+                        return false;
+                    }
+
+                    const data = await res.json().catch(() => null);
+                    if (data?.token) {
+                        set({ token: data.token });
+                        if (data.user) {
+                            useUserStore.getState().setUser(data.user);
+                        }
+                        return true;
+                    } else {
+                        get().logout();
+                        return false;
+                    }
+                } catch (error) {
+                    get().logout();
+                    return false;
+                }
+            },
+
+            checkAndRefreshToken: async () => {
+                const currentToken = get().token;
+                if (!currentToken) {
+                    return false;
+                }
+
+                if (isTokenExpired(currentToken)) {
+                    get().logout();
+                    return false;
+                }
+
+                if (isTokenExpiringSoon(currentToken, 24)) {
+                    return await get().refreshToken();
+                }
+
+                return true;
+            },
+
             logout: () => {
                 set({ token: null, isAuthenticated: false, needsVerification: false, pendingEmail: null });
                 useUserStore.getState().clearUser();
@@ -213,7 +340,9 @@ export const useAuthStore = create<AuthState>()(
             }),
             onRehydrateStorage: () => (state) => {
                 if (state?.token && state?.isAuthenticated) {
-                    console.log('Restoring authenticated session');
+                    setTimeout(() => {
+                        state.checkAndRefreshToken();
+                    }, 100);
                 }
             },
         }

@@ -6,33 +6,28 @@ import {
     KeyboardAvoidingView,
     Platform,
     Image,
-    ImageSourcePropType,
     Modal,
     Switch,
     Keyboard,
-    TouchableWithoutFeedback
+    TouchableWithoutFeedback, ActivityIndicator
 } from "react-native";
 import { Text } from "@/components/ui/Text";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import React, {useState, memo, useEffect} from "react";
+import React, {useState, useEffect, useRef} from "react";
 import {IconSymbol} from "@/components/ui/icon-symbol";
 import DateTimePicker, { DateType, useDefaultStyles } from 'react-native-ui-datepicker';
-import {BudgetCategory} from "@/types";
+import {BudgetCategory, Transaction, Shop} from "@/types";
 import dayjs from 'dayjs';
-import {CircularProgressBase} from "react-native-circular-progress-indicator";
 import {LinearGradient} from "expo-linear-gradient";
 import { TimerPicker } from "react-native-timer-picker";
 import {useUserStore} from "@/store/userStore";
+import {useAuthStore} from "@/store/authStore";
+import ReceiptItemRow from '@/components/ReceiptItemRow';
+import CategoryPill from '@/components/budget/CategoryPill';
+import {getLogoSource} from "@/helpers/imageHelpers";
 
-
-type Shop = {
-    logo: ImageSourcePropType;
-    name: string;
-    category: string;
-}
-
-type ReceiptItemData = {
+type LocalReceiptItemData = {
     id: number;
     name: string;
     quantity: string;
@@ -40,201 +35,193 @@ type ReceiptItemData = {
     amount: string;
 }
 
-const units = ['pcs', 'kg', 'g', 'l', 'ml'];
-
-// small sample shop list
-const SHOP_LIST: Shop[] = [
-    { name: 'Uber Eats', category: 'Fast Food', logo: require('@/assets/images/ubereats.png') },
-    { name: 'Biedronka', category: 'Groceries', logo: require('@/assets/images/biedronka.png') },
-    { name: 'Lidl', category: 'Groceries', logo: require('@/assets/images/lidl.jpeg') },
-    { name: 'Bolt', category: 'Transport', logo: require('@/assets/images/bolt.jpeg') },
-];
-
-// eslint-disable-next-line react/display-name
-const ItemRow = memo(({
-                          item,
-                          onUpdate,
-                          onDelete
-                      }: {
-    item: ReceiptItemData;
-    onUpdate: (id: number, field: keyof ReceiptItemData, value: string) => void;
-    onDelete: (id: number) => void;
-}) => {
-    const [showUnitPicker, setShowUnitPicker] = useState(false);
-
-    const formatAmount = (text: string) => {
-        let normalized = text.replace(/,/g, '.');
-        normalized = normalized.replace(/[^0-9.]/g, '');
-        const firstDotIndex = normalized.indexOf('.');
-        if (firstDotIndex !== -1) {
-            const integer = normalized.slice(0, firstDotIndex);
-            let fraction = normalized.slice(firstDotIndex + 1).replace(/\./g, '');
-            if (fraction.length > 2) {
-                fraction = fraction.slice(0, 2);
-            }
-            normalized = integer + '.' + fraction;
-        }
-        return normalized;
-    };
-
-    const normalizeQuantity = (text: string) => {
-        let t = text.replace(/,/g, '.');
-        t = t.replace(/[^0-9.]/g, '');
-        const parts = t.split('.');
-        if (parts.length > 1) {
-            const integer = parts[0];
-            let fraction = parts.slice(1).join('');
-            if (fraction.length > 3) fraction = fraction.slice(0, 3);
-            t = integer + '.' + fraction;
-        }
-        return t;
-    };
-
-    return (
-        <View className="flex-col">
-            <View className="flex-row justify-between items-center py-2">
-                <TextInput
-                    className="text-base text-black font-medium flex-1"
-                    placeholder="Item name"
-                    onChangeText={(text) => onUpdate(item.id, 'name', text)}
-                    value={item.name}
-                    style={{
-                        fontFamily: 'Inter',
-                        padding: 0,
-                        margin: 0,
-                        lineHeight: 18,
-                        fontSize: 16,
-                        includeFontPadding: false,
-                        textAlignVertical: 'center',
-                    }}
-                    autoCapitalize="none"
-                    placeholderTextColor="#999"
-                    keyboardType="default"
-                    underlineColorAndroid="transparent"
-                />
-
-                {/* quantity + unit container */}
-                <View className="flex-row items-center w-[28%] justify-center gap-2">
-                    <TextInput
-                        className="text-base text-black font-medium"
-                        placeholder="0"
-                        onChangeText={(text) => {
-                            const normalized = normalizeQuantity(text);
-                            onUpdate(item.id, 'quantity', normalized);
-                        }}
-                        value={item.quantity}
-                        style={{
-                            fontFamily: 'Inter',
-                            padding: 0,
-                            margin: 0,
-                            lineHeight: 18,
-                            fontSize: 16,
-                            includeFontPadding: false,
-                            textAlignVertical: 'center',
-                            width: 56,
-                            textAlign: 'right',
-                        }}
-                        autoCapitalize="none"
-                        maxLength={7}
-                        placeholderTextColor="#999"
-                        keyboardType="decimal-pad"
-                        underlineColorAndroid="transparent"
-                    />
-                    <TouchableOpacity
-                        onPress={() => setShowUnitPicker(!showUnitPicker)}
-                        className="px-2 py-0.5 bg-gray-100 rounded-md"
-                        style={{ minWidth: 32, alignItems: 'center', justifyContent: 'center' }}
-                    >
-                        <Text className="text-xs text-gray-600 font-medium">{item.unit}</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <TextInput
-                    className="text-base text-black font-medium w-[20%] text-right"
-                    placeholder="0.00"
-                    onChangeText={(text) => {
-                        const formatted = formatAmount(text);
-                        onUpdate(item.id, 'amount', formatted);
-                    }}
-                    value={item.amount}
-                    style={{
-                        fontFamily: 'Inter',
-                        padding: 0,
-                        margin: 0,
-                        lineHeight: 18,
-                        fontSize: 16,
-                        includeFontPadding: false,
-                        textAlignVertical: 'center',
-                    }}
-                    autoCapitalize="none"
-                    placeholderTextColor="#999"
-                    keyboardType="decimal-pad"
-                    underlineColorAndroid="transparent"
-                />
-                <TouchableOpacity onPress={() => onDelete(item.id)} className="ml-2">
-                    <IconSymbol name="bin.xmark" size={20} weight="bold" color="#e37a9e" />
-                </TouchableOpacity>
-            </View>
-            {showUnitPicker && (
-                <View className="flex-row gap-2 mt-2 mb-1 pl-2">
-                    {units.map((unit) => (
-                        <TouchableOpacity
-                            key={unit}
-                            onPress={() => {
-                                onUpdate(item.id, 'unit', unit);
-                                setShowUnitPicker(false);
-                            }}
-                            className={`px-3 py-1.5 rounded-full ${item.unit === unit ? 'bg-accent' : 'bg-gray-100'}`}
-                        >
-                            <Text className={`text-sm font-medium ${item.unit === unit ? 'text-white' : 'text-heading'}`}>
-                                {unit}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            )}
-        </View>
-    );
-});
-
 export default function ManuallyAdd() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const defaultStyles = useDefaultStyles();
+    const [editMode, setEditMode] = useState(false);
+    const transactionData: Transaction | null = params.transactionData ? JSON.parse(params.transactionData as string) : null;
 
-    const scannedData = params.scannedData ? JSON.parse(params.scannedData as string) : null;
+    useEffect(() => {
+        if(transactionData?.id) setEditMode(true);
+    }, [transactionData]);
 
-    const [isReceipt, setIsReceipt] = useState(scannedData ? true : false);
-    const [shopQuery, setShopQuery] = useState(scannedData?.shop?.name || '');
-    const [selectedCategory,setSelectedCategory] = useState<BudgetCategory | null>(null);
+    const parseTimeString = (timeStr: string | undefined): {hours: number, minutes: number} | null => {
+        if (!timeStr) return null;
+        const parts = timeStr.split(':');
+        if (parts.length < 2) return null;
+        const hours = parseInt(parts[0], 10);
+        const minutes = parseInt(parts[1], 10);
+        if (isNaN(hours) || isNaN(minutes)) return null;
+        return { hours, minutes };
+    };
+
+    const [isReceipt, setIsReceipt] = useState(!!transactionData?.receiptPositions?.length);
+    const [shopQuery, setShopQuery] = useState(transactionData?.shop?.name || '');
+    const [selectedCategory, setSelectedCategory] = useState<BudgetCategory | null>(transactionData?.budgetCategory || null);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [toggleShop, setToggleShop] = useState(false);
     const [toggleTime, setToggleTime] = useState(false);
-    const [selectedTime, setSelectedTime] = useState<{hours: number, minutes: number} | null>(
-        scannedData?.time || null
-    );
-    const [tempSelectedTime, setTempSelectedTime] = useState<{hours: number, minutes: number} | null>(
-        scannedData?.time || null
-    );
-    const [selectedShop, setSelectedShop] = useState<Shop | null>(scannedData?.shop || null);
-    const [totalPrice, setTotalPrice] = useState(scannedData?.totalAmount || "0.00");
-    const [receiptItems, setReceiptItems] = useState<ReceiptItemData[]>(
-        scannedData?.items || []
-    );
+
+    const parsedTime = parseTimeString(transactionData?.time);
+    const [selectedTime, setSelectedTime] = useState<{hours: number, minutes: number} | null>(parsedTime);
+    const [tempSelectedTime, setTempSelectedTime] = useState<{hours: number, minutes: number} | null>(parsedTime);
+
+    const [selectedShop, setSelectedShop] = useState<Shop | null>(transactionData?.shop || null);
+    const [totalPrice, setTotalPrice] = useState(transactionData?.amount?.toString() || "0.00");
+
+    const initialReceiptItems: LocalReceiptItemData[] = Array.isArray(transactionData?.receiptPositions) && transactionData.receiptPositions.length
+        ? transactionData.receiptPositions.map((item, index) => ({
+            id: item.id || index + 1,
+            name: item.name || '',
+            quantity: item.quantity?.toString() || '',
+            unit: item.unit || 'pcs',
+            amount: item.totalItemPrice?.toFixed(2) || '0.00',
+        }))
+        : [];
+
+    const [receiptItems, setReceiptItems] = useState<LocalReceiptItemData[]>(initialReceiptItems);
     const currentBudget = useUserStore(state => state.user?.currentBudget ?? null);
     const rawCategories = currentBudget?.budgetCategories;
     const budgetCategories = Array.isArray(rawCategories) ? rawCategories.filter(Boolean) : [];
     const [nextItemId, setNextItemId] = useState(
-        scannedData?.items ? Math.max(...scannedData.items.map((i: ReceiptItemData) => i.id)) + 1 : 1
+        initialReceiptItems.length > 0
+            ? Math.max(...initialReceiptItems.map(i => i.id)) + 1
+            : 1
     );
-    const [selected, setSelected] = useState<DateType>(scannedData?.date || undefined);
 
+    const initialSelected: DateType = transactionData?.date ? new Date(transactionData.date) : undefined;
+    const [selected, setSelected] = useState<DateType>(initialSelected);
+    const {token} = useAuthStore();
+    const {addTransaction,updateTransaction} = useUserStore()
+    const [initialShops,setInitialShops] = useState<Shop[]>([]);
+    const shopNameScrollRef = useRef<ScrollView | null>(null);
+    const [searchedShops,setSearchedShops] = useState<Shop[]>([])
+    const [searchedShopsLoading,setSearchedShopsLoading] = useState(false);
+    const [initialShopsLoading,setInitialShopsLoading] = useState(false);
     useEffect(() => {
-        if (scannedData) {
-            console.log('Receipt scanned successfully!');
+        if(!token) return;
+        setInitialShopsLoading(true);
+        const fetchInitialShops = async ()=> {
+            try {
+                const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/shops/get-random`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    }
+                })
+                if (!res.ok) {
+                    console.log('Failed to fetch initial shops');
+                    return;
+                }
+                const data = await res.json();
+                setInitialShops(data);
+            }
+            catch(err){
+                console.log('Failed to fetch initial shops', err);
+            }
+            finally{
+                setInitialShopsLoading(false);
+            }
         }
-    }, [scannedData]);
+        fetchInitialShops();
+    }, [token]);
+    const [showNoBudgetCategoryModal, setShowNoBudgetCategoryModal] = useState(false);
+    const [dateError, setDateError] = useState('');
+    const [timeError, setTimeError] = useState('');
+    const [receiptPositionErrors, setReceiptPositionErrors] = useState('');
+    const [shopError, setShopError] = useState('');
+    const [pendingTransaction, setPendingTransaction] = useState(false);
+    const [transactionFailed, setTransactionFailed] = useState(false);
+    const validateTimeAndDate = () => {
+        if (!selected) {
+            setDateError('Please select a date');
+        }
+        if (!selectedTime) {
+            setTimeError('Please select a time');
+        }
+        if(isReceipt && !receiptItems.length){
+            setReceiptPositionErrors('Please add at least one receipt position or remove the receipt option');
+        }
+        if(!selectedShop)
+        {
+            setShopError('Please select a shop');
+        }
+        return !(!selected || !selectedTime || (isReceipt && !receiptItems.length) || !selectedShop);
+    }
 
+    const clearErrors = () => {
+        setDateError('');
+        setTimeError('');
+        setReceiptPositionErrors('');
+        setTransactionFailed(false);
+    }
+    const handleCreateTransaction = async (skipCategory: boolean = false) => {
+        clearErrors();
+        setPendingTransaction(true);
+        if(!validateTimeAndDate()) {
+            setPendingTransaction(false);
+            return;
+        }
+        if(!selectedCategory && !skipCategory)
+        {
+            setShowNoBudgetCategoryModal(true);
+            setPendingTransaction(false);
+            return;
+        }
+        const payload = JSON.stringify({
+            budgetCategoryId: selectedCategory ? selectedCategory.id : null,
+            shopId: selectedShop ? selectedShop.id : null,
+            amount: isReceipt ? parseFloat(calculateTotal()) : parseFloat(totalPrice.replace(/,/g, '.')),
+            date: selected ? dayjs(selected).format('YYYY-MM-DD') : null,
+            time: selectedTime ? {hours: selectedTime.hours, minutes: selectedTime.minutes} : null,
+            receiptPositions: isReceipt ? receiptItems.map((item) => ({
+                name: item.name,
+                quantity: parseFloat(item.quantity.replace(/,/g, '.')),
+                unit: item.unit,
+                totalItemPrice: parseFloat(item.amount.replace(/,/g, '.')),
+            })) : [],
+        });
+        try {
+            const base = `${process.env.EXPO_PUBLIC_API_URL}/api/transactions`;
+            const url = editMode ? `${base}/${transactionData?.id}` : `${base}/create`;
+            const method = editMode ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: payload,
+            });
+
+            if (!res.ok) {
+                console.log(res);
+                setTransactionFailed(true);
+                console.log('Failed to create transaction');
+                return;
+            }
+            const data : Transaction = await res.json();
+
+            if (editMode) {
+                updateTransaction(data.id, data, transactionData);
+                // Store transaction ID globally to reopen modal after navigation
+                (global as any).__reopenTransactionId = data.id;
+                router.back();
+            } else {
+                addTransaction(data);
+                router.push('/(tabs)');
+            }
+        }
+        catch (err) {
+            console.log('Failed to create transaction', err);
+        }
+        finally{
+            setPendingTransaction(false);
+        }
+    }
     const handlePriceChange = (text: string) => {
         let normalized = text.replace(/,/g, '.');
         normalized = normalized.replace(/[^0-9.]/g, '');
@@ -260,18 +247,19 @@ export default function ManuallyAdd() {
     };
 
     const addReceiptItem = () => {
-        const newItem: ReceiptItemData = {
+        const newItem: LocalReceiptItemData = {
             id: nextItemId,
             name: '',
             quantity: '',
             unit: 'pcs',
             amount: ''
         };
+        setReceiptPositionErrors('')
         setReceiptItems([...receiptItems, newItem]);
         setNextItemId(nextItemId + 1);
     };
 
-    const updateReceiptItem = (id: number, field: keyof ReceiptItemData, value: string) => {
+    const updateReceiptItem = (id: number, field: keyof LocalReceiptItemData, value: string) => {
         setReceiptItems(receiptItems.map(item =>
             item.id === id ? { ...item, [field]: value } : item
         ));
@@ -286,23 +274,65 @@ export default function ManuallyAdd() {
         setShopQuery(shop.name);
         setToggleShop(false);
     }
+    const searchByShopQuery = React.useCallback(async (query: string) => {
+        if(!toggleShop && selectedShop) return;
+        try{
+            setSearchedShopsLoading(true);
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/shops/search?query=${query.trim()}`,{
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+            })
+            if(!res.ok){
+                console.log('Failed to fetch shops');
+                return;
+            }
+            const data = await res.json();
+            setSearchedShops(data);
+        }
+        catch (err)
+        {
+            console.log('Failed to fetch shops', err);
+        }
+        finally{
+            setSearchedShopsLoading(false);
+        }
+    }, [toggleShop, selectedShop, token]);
+
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            if (shopQuery.trim().length > 0) {
+                searchByShopQuery(shopQuery);
+            } else {
+                setSearchedShops([]);
+            }
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [shopQuery, searchByShopQuery]);
 
     const pad = (n: number) => n.toString().padStart(2, '0');
 
-    const renderTimeLabel = (t: { hours: number; minutes: number } | null) =>
-        t ? `${pad(t.hours)}:${pad(t.minutes)}` : 'Time';
-
-    const formatDate = (date: DateType) => {
-        if (!date) return 'Select date';
-        // @ts-ignore
-        const d = new Date(date);
-        const day = d.getDate().toString().padStart(2, '0');
-        const month = (d.getMonth() + 1).toString().padStart(2, '0');
-        const year = d.getFullYear();
-        return `${day}.${month}.${year}`;
+    const renderTimeLabel = (t: { hours: number; minutes: number } | null) => {
+        if (t === null || t === undefined) return 'Time';
+        return `${pad(t.hours)}:${pad(t.minutes)}`;
     };
 
-    const filteredShops = SHOP_LIST.filter(s => s.name.toLowerCase().includes(shopQuery.toLowerCase()));
+    const filteredShops = shopQuery.trim() === '' ? initialShops : searchedShops;
+
+    useEffect(() => {
+        if (selectedShop) {
+            setTimeout(() => {
+                try {
+                    shopNameScrollRef.current?.scrollTo({ x: 0, animated: false });
+                } catch (e) {
+                    console.debug(e);
+                }
+            }, 0);
+        }
+    }, [selectedShop]);
 
     return (
         <KeyboardAvoidingView
@@ -315,17 +345,17 @@ export default function ManuallyAdd() {
                         colors={['#eae8ff', '#e2deff']}
                         start={{x: 0, y: 0}}
                         end={{x: 0, y: 0.9}}
-                        style={{ flex: 1, gap:24 }}
+                        style={{ flex: 1, gap: 24 }}
                     >
                         <SafeAreaView className="flex-1" edges={['top']}>
-                            {/* Main container */}
                             <View className="flex-1 justify-between">
-                                {/* Top section */}
                                 <View className={'flex flex-row justify-between items-center px-6'}>
                                     <TouchableOpacity className={'bg-white p-4 rounded-full'} onPress={() => router.back()}>
                                         <IconSymbol name="arrow.left" size={24} weight={'bold'} color="#6b5aed" />
                                     </TouchableOpacity>
+                                    <Text className="text-heading font-semibold text-3xl">{editMode ? 'Edit Transaction' : 'Add Transaction'}</Text>
                                 </View>
+                                {transactionFailed && (<Text className="text-red-500 text-center mt-2 text-lg font-medium">Failed to add transaction. Please try again.</Text>)}
                                 <ScrollView
                                     showsVerticalScrollIndicator={false}
                                     contentContainerStyle={{ justifyContent: "center",paddingHorizontal: 16, gap: 24, marginTop:24, paddingBottom: 50 }}
@@ -334,36 +364,19 @@ export default function ManuallyAdd() {
                                     <ScrollView
                                         horizontal
                                         showsHorizontalScrollIndicator={false}
-                                        contentContainerStyle={{ paddingHorizontal: -8, alignItems: 'center',gap: 8}}
+                                        contentContainerStyle={{ paddingHorizontal: -8, alignItems: 'center', gap: 8 }}
                                     >
-                                        {budgetCategories.map((category) => {
-                                            const percentageSpent =
-                                                category.allocated > 0 ? Math.min(100, (category.spent / category.allocated) * 100) : 0;
-
-                                            return (
-                                                <TouchableOpacity key={category.id} className={' rounded-full items-center p-2 justify-center '} style={{backgroundColor: selectedCategory?.id === category.id ? category.color : 'white' }} onPress={() => {setSelectedCategory(category)}}>
-                                                    <CircularProgressBase
-                                                        value={percentageSpent}
-                                                        radius={28}
-                                                        activeStrokeWidth={4}
-                                                        inActiveStrokeWidth={4}
-                                                        maxValue={100}
-                                                        activeStrokeColor={selectedCategory?.id === category.id ? 'white' : category.color}
-                                                        circleBackgroundColor={selectedCategory?.id === category.id ? category.color : 'white'}
-                                                        inActiveStrokeColor={selectedCategory?.id === category.id ? '#ffffff90' : category.color+'30'}
-                                                        strokeLinecap="butt"
-                                                        rotation={0}
-                                                        clockwise={false}
-                                                    >
-                                                        <View style={{ alignItems: 'center' }}>
-                                                            <IconSymbol name={category.iconUri} color={selectedCategory?.id === category.id ? 'white' : category.color} weight="bold" size={24} />
-                                                        </View>
-                                                    </CircularProgressBase>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
+                                        {budgetCategories.map((category) => (
+                                            <CategoryPill
+                                                key={category.id}
+                                                category={category}
+                                                selectedCategory={selectedCategory}
+                                                onPress={() => setSelectedCategory(prev => (prev?.id === category.id ? null : category))}
+                                            />
+                                        ))}
                                     </ScrollView>
-                                    <View className={`bg-white ${isCalendarOpen ? 'rounded-[34px]' : 'rounded-[24px]'} shadow-sm`}>
+                                    <View>
+                                    <View className={`bg-white ${isCalendarOpen ? 'rounded-[34px]' : 'rounded-[24px]'} shadow-sm ${dateError ? 'border-2 border-red-500' : ''}`}>
                                         {isCalendarOpen
                                             ? (
                                                 <DateTimePicker
@@ -373,6 +386,7 @@ export default function ManuallyAdd() {
                                                     date={selected}
                                                     maxDate={new Date()}
                                                     onChange={({ date }) => {
+                                                        setDateError('');
                                                         setSelected(date);
                                                         setIsCalendarOpen(false)
                                                     }}
@@ -406,8 +420,8 @@ export default function ManuallyAdd() {
                                                     }}
                                                 />
                                             ):(
-                                                <TouchableOpacity className="flex flex-row w-full items-center p-6" onPress={() => setIsCalendarOpen(true)}>
-                                                    <View className={'flex flex-row items-center justify-between w-full'}>
+                                                <TouchableOpacity className={`flex flex-row w-full items-center p-6 `} onPress={() => setIsCalendarOpen(true)}>
+                                                    <View className={`flex flex-row items-center justify-between w-full`}>
                                                         <IconSymbol name={'calendar'} color={'#6B7280'} weight={'bold'} size={24} />
                                                         <Text className={`${selected ? 'text-black' : 'text-heading'} font-medium text-lg`}>
                                                             {selected ? dayjs(selected).format('DD MMMM YYYY') : 'Select date'}
@@ -416,8 +430,11 @@ export default function ManuallyAdd() {
                                                 </TouchableOpacity>
                                             )}
                                     </View>
-                                    <View className={'w-full flex flex-row gap-4 items-start'}>
-                                        <View className={'flex-1 p-6 w-full bg-white rounded-[24px] flex flex-col items-center shadow-sm gap-6'}>
+                                        {dateError ? <Text className="text-red-500 text-sm ml-2">{dateError}</Text> : null}
+                                    </View>
+                                    <View className={'w-full flex flex-row gap-2 items-start justify-between'}>
+                                        <View className={'flex-1 w-full flex flex-col items-start'}>
+                                        <View className={`p-6 bg-white rounded-[24px] flex flex-col items-center shadow-sm gap-6 ${shopError ? 'border-2 border-red-500' : ''}`}>
                                             {toggleShop ? (
                                                 <View className={'flex flex-col w-full'}>
                                                     <View className={'flex flex-row w-full items-center'}>
@@ -441,12 +458,15 @@ export default function ManuallyAdd() {
                                                             placeholderTextColor="#999"
                                                             keyboardType="default"
                                                             underlineColorAndroid="transparent"
-                                                            onFocus={() => setToggleShop(true)}
+                                                            onFocus={() => {setToggleShop(true); setShopError('')}}
                                                         />
                                                     </View>
                                                     <View className={'rounded-b-[24px] flex flex-col items-start gap-4 mt-2 w-full'}>
                                                         <ScrollView style={{ maxHeight: 180,width:'100%' }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 0 }} >
-                                                            {filteredShops.map((shop, index) => (
+                                                            {(initialShopsLoading || searchedShopsLoading) ?
+                                                                ( <ActivityIndicator size="small" color="#6B7280" />
+                                                                ) :
+                                                                (filteredShops.map((shop, index) => (
                                                                 <React.Fragment key={index}>
                                                                     {index>0 && <View className="h-[1px] w-full bg-black/10" />}
                                                                     <TouchableOpacity
@@ -456,17 +476,17 @@ export default function ManuallyAdd() {
                                                                     >
                                                                         <View className="flex-row items-center gap-3">
                                                                             <Image
-                                                                                source={(shop.logo)}
+                                                                                source={getLogoSource(shop.logoUrl)}
                                                                                 className="w-10 h-10 rounded-[12px]"
                                                                             />
                                                                             <View>
                                                                                 <Text className="text-black font-semibold">{shop.name}</Text>
-                                                                                <Text className="text-black/50 text-xs">{shop.category}</Text>
+                                                                                <Text className="text-black/50 text-xs">{shop.categoryName}</Text>
                                                                             </View>
                                                                         </View>
                                                                     </TouchableOpacity>
                                                                 </React.Fragment>
-                                                            ))}
+                                                            )))}
 
                                                             {filteredShops.length === 0 && (
                                                                 <View className="py-4 px-2">
@@ -477,15 +497,53 @@ export default function ManuallyAdd() {
                                                     </View>
                                                 </View>
                                             ) : selectedShop ? (
-                                                <TouchableOpacity className={'flex flex-row w-full -my-2 items-center justify-start gap-3'} onPress={() => setToggleShop(true)}>
-                                                    <Image
-                                                        source={(selectedShop.logo)}
-                                                        className="w-11 h-11 rounded-[12px]"
-                                                    />
-                                                    <Text className={`text-black font-medium text-lg`}>{selectedShop.name}</Text>
-                                                </TouchableOpacity>
-                                            ) : (
-                                                <TouchableOpacity className={'flex flex-row w-full justify-between'} onPress={() => setToggleShop(true)}>
+                                                <View className={'flex flex-row w-full -my-2 items-center justify-between gap-3'}>
+                                                    {/* left side: reserve space on the right so text won't go under the X button */}
+                                                    <TouchableOpacity
+                                                        onPress={() => {setToggleShop(true); setShopError('')}}
+                                                        className={'flex-row items-center gap-3'}
+                                                        style={{ flex: 1 }}
+                                                        activeOpacity={0.8}
+                                                    >
+                                                        <Image
+                                                            source={getLogoSource(selectedShop.logoUrl)}
+                                                            className="w-11 h-11 rounded-[12px]"
+                                                        />
+                                                        {/* horizontal scroll for long shop names; allow user to swipe right */}
+                                                        <ScrollView
+                                                            horizontal
+                                                            ref={(r) => { shopNameScrollRef.current = r; }}
+                                                            showsHorizontalScrollIndicator={false}
+                                                            nestedScrollEnabled
+                                                            contentContainerStyle={{ alignItems: 'center' }}
+                                                            style={{ maxWidth: '100%' }}
+                                                        >
+                                                            <Text
+                                                                className={`text-black font-medium text-lg`}
+                                                                numberOfLines={1}
+                                                                ellipsizeMode="tail"
+                                                                style={{ flexShrink: 1, paddingRight: 8 }}
+                                                            >
+                                                                {selectedShop.name}
+                                                            </Text>
+                                                        </ScrollView>
+                                                    </TouchableOpacity>
+
+                                                    <TouchableOpacity
+                                                        onPress={() => {
+                                                            setSelectedShop(null);
+                                                            setShopQuery('');
+                                                            setSearchedShops([]);
+                                                            setToggleShop(false);
+                                                        }}
+                                                        accessibilityLabel="Clear selected shop"
+                                                        style={{ width: 20, height: 20, alignItems: 'center', justifyContent: 'center' }}
+                                                    >
+                                                        <IconSymbol name={'xmark'} color={'#6B7280'} weight={'bold'} size={20} />
+                                                    </TouchableOpacity>
+                                                </View>
+                                             ) : (
+                                                <TouchableOpacity className={'flex flex-row w-full justify-between'} onPress={() => {setToggleShop(true);setShopError('')}}>
                                                     <IconSymbol name={'cart'} color={'#6B7280'} weight={'bold'} size={24} />
                                                     <Text className={`${selected ? 'text-black' : 'text-heading'} font-medium text-lg`}>
                                                         &nbsp;Select shop
@@ -493,17 +551,26 @@ export default function ManuallyAdd() {
                                                 </TouchableOpacity>
                                             )}
                                         </View>
-                                        <TouchableOpacity
-                                            className={'flex-1 p-6 bg-white rounded-[24px] shadow-sm flex flex-row items-center justify-between'}
-                                            onPress={() => setToggleTime(true)}
-                                        >
-                                            <IconSymbol name={'clock'} color={'#6B7280'} weight={'bold'} size={24} />
-                                            <Text className={`${selectedTime ? 'text-black' : 'text-heading'} font-medium text-lg`}>
-                                                &nbsp;{renderTimeLabel(selectedTime)}
-                                            </Text>
-                                        </TouchableOpacity>
+                                            {shopError ? <Text className="text-red-500 text-sm">{shopError}</Text> : null}
+                                        </View>
+                                        <View className={'flex-[0.6] w-full flex flex-col items-end'}>
+                                            <TouchableOpacity
+                                                className={`p-6 bg-white rounded-[24px] shadow-sm flex flex-row items-center justify-between ${timeError ? 'border-2 border-red-500' : ''}`}
+                                                onPress={() => {
+                                                    const now = new Date();
+                                                    setTempSelectedTime(selectedTime || { hours: now.getHours(), minutes: now.getMinutes() });
+                                                    setToggleTime(true);
+                                                }}
+                                            >
+                                                <IconSymbol name={'clock'} color={'#6B7280'} weight={'bold'} size={24} />
+                                                <Text className={`${selectedTime ? 'text-black' : 'text-heading'} font-medium text-lg`}>
+                                                    &nbsp;{renderTimeLabel(selectedTime)}
+                                                </Text>
+                                            </TouchableOpacity>
+                                            {timeError ? <Text className="text-red-500 text-sm">{timeError}</Text> : null}
+                                        </View>
                                     </View>
-                                    <View className={'bg-white p-6 rounded-[24px] shadow-sm gap-6 flex-col flex'}>
+                                    <View className={`bg-white p-6 rounded-[24px] shadow-sm gap-6 flex-col flex ${receiptPositionErrors ? 'border-2 border-red-500' : ''}`}>
                                         <View className={'flex flex-row items-center justify-between'}>
                                             <View className={'flex flex-col'}>
                                                 <Text className={'font-medium text-heading text-lg'}>Add a receipt</Text>
@@ -513,7 +580,7 @@ export default function ManuallyAdd() {
                                                 trackColor={{ false: "#d1d5db", true: "#6b5aed" }}
                                                 thumbColor={isReceipt ? "#ffffff" : "#f4f3f4"}
                                                 ios_backgroundColor="#d1d5db"
-                                                onValueChange={setIsReceipt}
+                                                onValueChange={()=>{setIsReceipt(!isReceipt); setReceiptPositionErrors('');}}
                                                 value={isReceipt}
                                             />
                                         </View>
@@ -524,7 +591,7 @@ export default function ManuallyAdd() {
                                         }
                                     </View>
                                     {isReceipt && (
-                                        <View className={'bg-white p-6 rounded-[24px] shadow-sm gap-6'}>
+                                        <View className={`bg-white p-6 rounded-[24px] shadow-sm gap-6 ${receiptPositionErrors ? 'border-2 border-red-500' : ''}`}>
                                             <View className="w-full">
                                                 {/* Logo - positioned above modal */}
                                                 {selectedShop && (
@@ -540,7 +607,7 @@ export default function ManuallyAdd() {
                                                             className="bg-white rounded-2xl"
                                                         >
                                                             <Image
-                                                                source={selectedShop.logo}
+                                                                source={getLogoSource(selectedShop.logoUrl)}
                                                                 className="w-16 h-16 object-contain rounded-[12px]"
                                                             />
                                                         </View>
@@ -580,7 +647,7 @@ export default function ManuallyAdd() {
                                                     {/* Items */}
                                                     <ScrollView style={{ maxHeight: 200 }}>
                                                         {receiptItems.map((item) => (
-                                                            <ItemRow
+                                                            <ReceiptItemRow
                                                                 key={item.id}
                                                                 item={item}
                                                                 onUpdate={updateReceiptItem}
@@ -657,8 +724,8 @@ export default function ManuallyAdd() {
                                     </View>
 
                                     <SafeAreaView edges={['bottom']}>
-                                        <TouchableOpacity className="bg-accent rounded-full p-6 items-center justify-center">
-                                            <Text className="text-white font-semibold">Add expense</Text>
+                                        <TouchableOpacity className={`${pendingTransaction ? 'bg-accent/50' : 'bg-accent'} rounded-full px-6 py-6 items-center justify-center`} onPress={() => handleCreateTransaction(false)}>
+                                            {pendingTransaction ? <ActivityIndicator color={'#6B5AED'}/> : <Text className="text-white text-xl font-semibold">Add expense</Text>}
                                         </TouchableOpacity>
                                     </SafeAreaView>
                                 </View>
@@ -666,12 +733,14 @@ export default function ManuallyAdd() {
                         </SafeAreaView>
                     </LinearGradient>
 
-                    {/* Time Picker Modal */}
                     <Modal
                         visible={toggleTime}
                         transparent={true}
                         animationType="fade"
-                        onRequestClose={() => setToggleTime(false)}
+                        onRequestClose={() => {
+                            setTempSelectedTime(selectedTime);
+                            setToggleTime(false);
+                        }}
                     >
                         <View className="flex-1 bg-black/50 justify-center items-center px-6">
                             <View className="bg-white rounded-[24px] p-6 w-full">
@@ -680,14 +749,21 @@ export default function ManuallyAdd() {
                                     <Text className={'text-black font-semibold text-xl'}>
                                         Select Time
                                     </Text>
-                                    <TouchableOpacity onPress={() => setToggleTime(false)}>
+                                    <TouchableOpacity onPress={() => {
+                                        setTempSelectedTime(selectedTime);
+                                        setToggleTime(false);
+                                    }}>
                                         <IconSymbol name={'xmark'} color={'#6B7280'} weight={'bold'} size={24} />
                                     </TouchableOpacity>
                                 </View>
                                 <View className="rounded-[24px] flex flex-col items-center justify-center w-full">
                                     <TimerPicker
+                                        key={`time-picker-${toggleTime}-${tempSelectedTime?.hours}-${tempSelectedTime?.minutes}`}
                                         hideSeconds={true}
-                                        initialValue={{hours:selectedTime?.hours,minutes:selectedTime?.minutes}}
+                                        initialValue={{
+                                            hours: tempSelectedTime?.hours ?? new Date().getHours(),
+                                            minutes: tempSelectedTime?.minutes ?? new Date().getMinutes()
+                                        }}
                                         onDurationChange={(time) => setTempSelectedTime({ hours: time.hours, minutes: time.minutes })}
                                         styles={{
                                             pickerContainer: {
@@ -723,11 +799,43 @@ export default function ManuallyAdd() {
                                         onPress={() => {
                                             if (tempSelectedTime) {
                                                 setSelectedTime(tempSelectedTime);
+                                                setTimeError('')
                                             }
                                             setToggleTime(false);
                                         }}
                                     >
                                         <Text className={'font-semibold text-white text-lg'}>Save</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </View>
+                    </Modal>
+
+                    <Modal
+                        visible={showNoBudgetCategoryModal}
+                        transparent={true}
+                        animationType="fade"
+                        onRequestClose={() => setShowNoBudgetCategoryModal(false)}
+                    >
+                        <View className="flex-1 bg-black/50 justify-center items-center px-6">
+                            <View className="bg-white rounded-[34px] p-6 w-full">
+                                <Text className="text-xl text-center font-semibold mb-2">No budget category selected</Text>
+                                <Text className="text-lg text-gray-600 mb-6 text-center px-10">You didn&#39;t choose a budget category. Do you want to proceed and create the transaction without assigning a category?</Text>
+                                <View className="flex-col w-full justify-end gap-3">
+                                    <TouchableOpacity
+                                        className="px-4 py-4 rounded-full border-2 border-accent"
+                                        onPress={() => setShowNoBudgetCategoryModal(false)}
+                                    >
+                                        <Text className="text-center text-accent text-xl">Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        className="px-4 py-4 rounded-full bg-accent"
+                                        onPress={() => {
+                                            setShowNoBudgetCategoryModal(false);
+                                            handleCreateTransaction(true);
+                                        }}
+                                    >
+                                        <Text className="text-white text-xl text-center font-semibold">Proceed</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>

@@ -1,12 +1,14 @@
-import { View, TouchableOpacity } from "react-native";
-import React, { useState, useEffect } from "react";
+import { Text } from '@/components/ui/Text';
+import { useRouter } from "expo-router";
 import { MotiImage, MotiView } from "moti";
+import React, { useEffect, useState } from "react";
+import { TouchableOpacity, View } from "react-native";
 interface Props {
     setStep: (step: number) => void;
 }
-import {Text} from '@/components/ui/Text'
 
-export default function TutorialSuggest({setStep}: Props) {
+export default function TutorialSuggest({ setStep }: Props) {
+    const router = useRouter();
     const fullText = "Hi there! 👋 I’m Savvio — your personal AI money assistant.";
     const [displayedText, setDisplayedText] = useState("");
 
@@ -22,7 +24,6 @@ export default function TutorialSuggest({setStep}: Props) {
 
     return (
         <View className="flex flex-col items-center w-full mb-6 gap-4">
-            {/* AI Buddy – spada z góry */}
             <MotiView
                 from={{ translateY: -200, opacity: 0 }}
                 animate={{ translateY: 0, opacity: 1 }}
@@ -47,9 +48,6 @@ export default function TutorialSuggest({setStep}: Props) {
                 />
             </MotiView>
 
-
-
-            {/* Dymek mowy */}
             <MotiView
                 from={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -71,7 +69,6 @@ export default function TutorialSuggest({setStep}: Props) {
                 </Text>
             </MotiView>
 
-            {/* Teksty pod spodem */}
             <MotiView
                 from={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -92,7 +89,6 @@ export default function TutorialSuggest({setStep}: Props) {
                 </Text>
             </MotiView>
 
-            {/* Przycisk */}
             <MotiView
                 from={{ opacity: 0, translateY: 20 }}
                 animate={{ opacity: 1, translateY: 0 }}
@@ -102,7 +98,7 @@ export default function TutorialSuggest({setStep}: Props) {
                 <TouchableOpacity className="bg-[#f2f0ff] w-full p-6 items-center justify-center rounded-full" onPress={() => setStep(1)}>
                     <Text className="text-[#7b62f6] font-bold text-xl">Yes!</Text>
                 </TouchableOpacity>
-                <TouchableOpacity className="bg-[#f2f0ff] w-full p-6 items-center justify-center rounded-full">
+                <TouchableOpacity className="bg-[#f2f0ff] w-full p-6 items-center justify-center rounded-full" onPress={() => router.push('/(aiassistant)/AiMain')}>
                     <Text className="text-[#7b62f6] font-bold text-xl">No, thanks</Text>
                 </TouchableOpacity>
             </MotiView>

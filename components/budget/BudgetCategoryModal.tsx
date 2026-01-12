@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, {useCallback, useEffect, useState} from "react";
 import {
     Modal,
     View,
@@ -17,6 +17,7 @@ import {useAuthStore} from "@/store/authStore";
 import {useUserStore} from "@/store/userStore";
 import {BudgetCategoryResponse} from "@/types";
 import {SafeAreaView} from "react-native-safe-area-context";
+import {randomInt} from "node:crypto";
 
 const availableIcons: SFSymbols6_0[] = [
     "car", "house", "bag", "tshirt", "cart",
@@ -61,7 +62,12 @@ export default function BudgetCategoryModal({
     useEffect(() => {
         resetForm();
     }, [visible]);
-
+    const onChangeCategoryName = useCallback((text:string) => {
+        setNewCategoryName(text);
+    }, []);
+    const onChangeCategoryAmount = useCallback((text:string) => {
+        setNewCategoryAmount(text);
+    }, []);
     const handleAddBudgetCategory = async() => {
         setErrorMessage("");
         if(!newCategoryName.trim()) {
@@ -145,7 +151,7 @@ export default function BudgetCategoryModal({
 
                     {/* Bottom sheet content */}
                     <View
-                        className="bg-white rounded-t-[32px] pt-6"
+                        className="bg-white rounded-[40px] pt-6 m-2"
                         style={{ maxHeight: '90%' }}
                     >
                         <View className="items-center px-6">
@@ -159,6 +165,7 @@ export default function BudgetCategoryModal({
                                 <ActivityIndicator color={'#6b5aed'} size={"large"} />
                             </View>
                         ) : (
+                            <>
                             <ScrollView
                                 className="px-6"
                                 showsVerticalScrollIndicator={false}
@@ -166,27 +173,38 @@ export default function BudgetCategoryModal({
                                 nestedScrollEnabled
                                 directionalLockEnabled
                                 keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
-                                contentContainerStyle={{ paddingBottom: 24 }}
                             >
                                 <View className="gap-4 pb-6">
                                     {errorMessage && <Text className={'text-danger text-lg text-center'}>{errorMessage}</Text>}
                         <View>
                             <Text className="text-sm text-gray-500 mb-1">Category Name</Text>
                             <TextInput
-                                className="bg-gray-100 p-3 rounded-[16px] text-black"
+                                className="bg-gray-100 rounded-[16px] text-black"
+                                style={{
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 12,
+                                    fontSize: 16,
+                                    lineHeight: 22,
+                                }}
                                 placeholder="e.g. Rent, Groceries, Transport"
                                 value={newCategoryName}
-                                onChangeText={setNewCategoryName}
+                                onChangeText={onChangeCategoryName}
                             />
                         </View>
                         <View>
                             <Text className="text-sm text-gray-500 mb-1">Budget Amount (zł)</Text>
                             <TextInput
-                                className="bg-gray-100 p-3 rounded-[16px] text-black"
+                                className="bg-gray-100 rounded-[16px] text-black"
+                                style={{
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 12,
+                                    fontSize: 16,
+                                    lineHeight: 22,
+                                }}
                                 placeholder="1000"
                                 keyboardType="numeric"
                                 value={newCategoryAmount}
-                                onChangeText={setNewCategoryAmount}
+                                onChangeText={onChangeCategoryAmount}
                             />
                         </View>
 
@@ -239,27 +257,57 @@ export default function BudgetCategoryModal({
                             </ScrollView>
                         </View>
 
-                        <View className="bg-gray-100 p-4 rounded-[16px] mb-4">
-                            <Text className="text-sm text-gray-500 mb-2">Preview</Text>
-                            <View className="flex-row items-center gap-3">
-                                <View
-                                    className="rounded-full p-3"
-                                    style={{ backgroundColor: selectedColor }}
-                                >
-                                    <IconSymbol name={selectedIcon} size={24} color="white" />
-                                </View>
-                                <View>
-                                    <Text className="font-bold text-lg">
-                                        {newCategoryName || "Category Name"}
-                                    </Text>
-                                    <Text className="text-gray-500">
-                                        {newCategoryAmount ? `${newCategoryAmount} zł` : "Budget amount"}
-                                    </Text>
-                                </View>
-                            </View>
-                        </View>
+                                    <View
+                                        className="relative flex flex-col justify-between rounded-[24px] p-4 overflow-hidden shadow-sm self-center mb-4"
+                                        style={{
+                                            backgroundColor: selectedColor,
+                                            width: '48%',
+                                            minHeight: 140
+                                        }}
+                                    >
+                                        <View>
+                                            <Text className="text-white font-bold text-xl">
+                                                {newCategoryName || 'Title'}
+                                            </Text>
+                                            <Text className="text-white/70 text-sm mt-1">
+                                                0 % used
+                                            </Text>
+                                        </View>
 
-                            <SafeAreaView edges={['bottom']} className="flex-row gap-3 mt-2 mb-4">
+                                        <View className="flex flex-row items-end justify-end">
+                                            <View className=" mr-2">
+                                                <Text className="text-white font-semibold text-sm">
+                                                    0 zł
+                                                </Text>
+                                                <Text className="text-white/70 text-xs">
+                                                    of {newCategoryAmount || 1000} zł
+                                                </Text>
+                                            </View>
+                                            <View className="w-2 h-16 bg-white rounded-full overflow-hidden border border-white">
+                                                <View
+                                                    className="w-full bg-red-500/70 rounded-full"
+                                                    style={{
+                                                        height: `0%`,
+                                                        alignSelf: 'flex-end',
+                                                        position: 'absolute',
+                                                        bottom: 0,
+                                                    }}
+                                                />
+                                            </View>
+                                        </View>
+
+                                        <View className="absolute left-[-16px] bottom-[-8px]">
+                                            <IconSymbol
+                                                name={selectedIcon as SFSymbols6_0}
+                                                size={64}
+                                                color="white"
+                                                style={{ opacity: 0.4 }}
+                                            />
+                                        </View>
+                                    </View>
+                        </View>
+                        </ScrollView>
+                            <SafeAreaView edges={['bottom']} className="flex-row gap-3 mb-4 px-6 py-2">
                                 <TouchableOpacity
                                     className="flex-1 bg-gray-200 py-4 rounded-full"
                                     onPress={onClose}
@@ -275,8 +323,7 @@ export default function BudgetCategoryModal({
                                     </Text>
                                 </TouchableOpacity>
                             </SafeAreaView>
-                        </View>
-                        </ScrollView>
+                    </>
                         )}
                     </View>
                 </View>
