@@ -5,7 +5,6 @@ GoogleSignin.configure({
     iosClientId: '241245744544-nnneqsghllugnbkojmmv5tbg7grhpfnf.apps.googleusercontent.com',
     offlineAccess: true,
     forceCodeForRefreshToken: true,
-    scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
 });
 
 export interface GoogleSignInResult {
@@ -14,7 +13,7 @@ export interface GoogleSignInResult {
     accessToken?: string;
     refreshToken?: string | null;
     expiresAt?: number | null;
-    hasEmailScope?: boolean;
+
     error?: string;
     user?: {
         email: string;
@@ -42,8 +41,6 @@ export const signInWithGoogle = async (): Promise<GoogleSignInResult> => {
         const serverAuthCode = userInfo.data?.serverAuthCode || null;
 
         const expiresAt = Date.now() + 3600 * 1000;
-        const scopes = userInfo.data?.scopes || [];
-        const hasEmailScope = scopes.includes('https://www.googleapis.com/auth/gmail.readonly');
 
         return {
             success: true,
@@ -51,7 +48,7 @@ export const signInWithGoogle = async (): Promise<GoogleSignInResult> => {
             accessToken: tokens.accessToken,
             refreshToken: serverAuthCode,
             expiresAt,
-            hasEmailScope,
+
             user: {
                 email: userInfo.data?.user.email || '',
                 name: userInfo.data?.user.name || '',

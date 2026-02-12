@@ -93,8 +93,94 @@ export type FamilyMember = {
 
 export type Family = {
     id: number;
-    inviteCode?: string;          // only for owner
-    inviteCodeExpiresAt?: string; // only for owner
+    inviteCode?: string;
+    inviteCodeExpiresAt?: string;
     members: FamilyMember[];
     createdAt: string;
+}
+
+export type ReportBudgetSummary = {
+    budgetLimit: number;
+    totalSpent: number;
+    remaining: number;
+    percentageUsed: number;
+    dateStart: string;
+    dateEnd: string;
+    transactionCount: number;
+    aiTip: string | null;
+}
+
+export type ReportCategoryBreakdown = {
+    name: string;
+    allocated: number;
+    spent: number;
+    percentageUsed: number;
+    color: string;
+    iconUri: string;
+    transactionCount: number;
+}
+
+export type ReportTopExpense = {
+    amount: number;
+    date: string;
+    time: string;
+    shop: Shop;
+    budgetCategoryShort: BudgetCategoryShort;
+}
+export type BudgetCategoryShort = {
+    name: string;
+    color: string;
+    iconUri: string;
+}
+export type ReportDailySpending = {
+    date: string;
+    amount: number;
+}
+
+export type ReportSubscriptionsSummary = {
+    totalMonthly: number;
+    count: number;
+    subscriptions: {
+        name: string;
+        price: number;
+        period: Period;
+        logoUrl: string;
+        color: string;
+    }[];
+}
+
+export type ReportGoal = {
+    name: string;
+    targetAmount: number;
+    currentAmount: number;
+    depositThisMonth: number;
+    percentageComplete: number;
+    color: string;
+    iconUri: string;
+}
+
+export type ReportGoalsSummary = {
+    activeGoals: number;
+    totalDepositsThisMonth: number;
+    goals: ReportGoal[];
+    aiTip: string | null;
+}
+
+export type ReportComparison = {
+    previousBudgetSpent: number;
+    spendingChange: number;
+    previousBudgetId: number;
+    compareTo: string;
+}
+
+export type BudgetReport = {
+    budgetSummary: ReportBudgetSummary;
+    categoryBreakdown: ReportCategoryBreakdown[];
+    topExpenses: ReportTopExpense[];
+    dailySpending: ReportDailySpending[];
+    subscriptionsSummary: ReportSubscriptionsSummary;
+    goalsSummary: ReportGoalsSummary;
+    comparison: ReportComparison;
+    categoryBreakdownAiTip: string | null;
+    dailySpendingAiTip: string | null;
 }

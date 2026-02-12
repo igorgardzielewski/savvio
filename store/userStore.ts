@@ -87,6 +87,9 @@ export const useUserStore = create<UserState>()(
                             user: {
                                 ...s.user,
                                 currentBudget: budget,
+                                previousBudgets: s.user.currentBudget
+                                    ? [s.user.currentBudget, ...s.user.previousBudgets]
+                                    : s.user.previousBudgets,
                             },
                         }
                         : s

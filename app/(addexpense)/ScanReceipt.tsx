@@ -18,26 +18,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const MOCK_SCANNED_DATA: Partial<Transaction> = {
-  shop: {
-    id: 1,
-    name: 'Biedronka',
-    logoUrl: 'biedronka.png',
-    categoryName: 'Groceries',
-    categoryColor: '#00A651'
-  },
-  date: new Date(),
-  time: '14:32',
-  amount: 34.72,
-  receiptPositions: [
-    { id: 1, name: 'Mleko 2%', quantity: '1', unit: 'pcs', totalItemPrice: 3.49 },
-    { id: 2, name: 'Chleb pszenny', quantity: '1', unit: 'pcs', totalItemPrice: 4.99 },
-    { id: 3, name: 'Jajka L', quantity: '10', unit: 'pcs', totalItemPrice: 12.99 },
-    { id: 4, name: 'Pomidory', quantity: '0.5', unit: 'kg', totalItemPrice: 4.50 },
-    { id: 5, name: 'Ser żółty', quantity: '0.25', unit: 'kg', totalItemPrice: 8.75 },
-  ]
-};
-
 export default function ScanReceipt() {
   const router = useRouter();
   const { token } = useAuthStore();

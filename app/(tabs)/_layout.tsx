@@ -1,22 +1,26 @@
+import GenerateReportModal from '@/components/GenerateReportModal';
 import { CustomTabBar } from '@/components/ui/CustomTabBar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Text } from '@/components/ui/Text';
 import { useFamilyWebSocket } from '@/hooks/useFamilyWebSocket';
 import { useAuthStore } from "@/store/authStore";
+import type { Budget } from "@/store/userStore";
 import { useUserStore } from "@/store/userStore";
 import { Tabs, usePathname, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, View } from 'react-native';
+import { Animated, Easing, Pressable, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {BudgetReport, ReportBudgetSummary} from "@/types";
 export default function TabLayout() {
     const [isExpanded, setIsExpanded] = useState(false);
+    const [reportModalVisible, setReportModalVisible] = useState(false);
     const widthAnim = useRef(new Animated.Value(56)).current;
     const pathname = usePathname();
     const router = useRouter();
     const { user, setUser, isUserFetched } = useUserStore();
     const { isAuthenticated, token, logout } = useAuthStore();
     const { getInitials } = require('@/helpers/stringHelpers');
-
+    const [isLoading, setIsLoading] = useState(false);
     useFamilyWebSocket();
 
     useEffect(() => {
@@ -80,7 +84,7 @@ export default function TabLayout() {
             };
         }
         return {
-            title: 'Hello, Igor',
+            title: `Hello, ${user?.firstName}`,
             subtitle: 'Welcome to Savvio',
             titleColor: 'text-black',
             subtitleColor: 'text-[#6b5aed]',
@@ -93,14 +97,42 @@ export default function TabLayout() {
         logout();
         router.replace('/(auth)/authPage');
     };
-
+    const handleFetchReport = async (budgetId:number | undefined) => {
+        if (!budgetId) return;
+        setIsLoading(true);
+        try {
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/report/${budgetId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+            if (res.ok) {
+                const data = await res.json() as BudgetReport;
+                setReportModalVisible(false);
+                router.push({
+                    pathname: '/(report)/report',
+                    params: {
+                        reportData: JSON.stringify(data)
+                    }
+                });
+            }
+        }
+        catch (error) {
+            console.error('Failed to fetch report:', error);
+        }
+        finally {
+            setIsLoading(false);
+        }
+    }
     return (
         <SafeAreaView
             className="flex flex-1 bg-[#f2f0ff]"
             edges={['top', 'left', 'right']}
         >
-            <View className={'flex flex-row items-center justify-between w-full'}>
-                <View className="flex flex-row items-end py-1 px-4 gap-4">
+            <View className={'flex flex-row items-center justify-between w-full px-4'}>
+                <View className="flex flex-row items-end py-1 gap-4">
                     <Animated.View
                         style={{
                             width: widthAnim,
@@ -159,7 +191,36 @@ export default function TabLayout() {
                         </Text>
                     </View>
                 </View>
+
+                {!isExpanded && pathname === '/budget' && (
+                    <TouchableOpacity
+                        onPress={() => setReportModalVisible(true)}
+                        style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 22,
+                            backgroundColor: '#6b5aed',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            shadowColor: '#6b5aed',
+                            shadowOpacity: 0.3,
+                            shadowRadius: 8,
+                            shadowOffset: { width: 0, height: 4 },
+                        }}
+                    >
+                        <IconSymbol name="chart.bar.doc.horizontal" size={22} color="white" />
+                    </TouchableOpacity>
+                )}
             </View>
+
+            <GenerateReportModal
+                visible={reportModalVisible}
+                onClose={() => setReportModalVisible(false)}
+                onGenerate={(budget: Budget) => {
+                    handleFetchReport(budget.id );
+                }}
+                isLoading={isLoading}
+            />
 
             <Tabs
                 tabBar={(props) => <CustomTabBar {...props} />}

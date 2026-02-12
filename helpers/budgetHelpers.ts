@@ -1,7 +1,8 @@
 export const getColorBySpent = (spend: number, allocated: number) => {
+    if (spend >= allocated) return '#f87171' // danger
     const percentage = (spend / allocated) * 100;
-    if(percentage < 70) return '#16c47f' // safe
-    if(percentage >= 70 && percentage < 90) return '#ffcc4d' // warning
+    if (percentage < 70) return '#16c47f' // safe
+    if (percentage >= 70 && percentage < 90) return '#ffcc4d' // warning
     return '#f87171' // danger
 }
 

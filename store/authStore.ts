@@ -246,7 +246,7 @@ export const useAuthStore = create<AuthState>()(
                     const res = await fetch(AUTH_GOOGLE_SIGNIN_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ idToken: result.idToken, accessToken: result.accessToken, refreshToken: result.refreshToken, tokenExpiry: result.expiresAt, gmailAccessGranted: result.hasEmailScope }),
+                        body: JSON.stringify({ idToken: result.idToken, accessToken: result.accessToken, refreshToken: result.refreshToken, tokenExpiry: result.expiresAt }),
                     });
                     const data = await res.json().catch(() => null);
 

@@ -197,7 +197,6 @@ export default function GoalsScreen() {
             </ScrollView>
         );
     };
-
     return (
         <LinearGradient
             colors={['#f2f0ff', '#ffffff']}
@@ -281,6 +280,9 @@ export default function GoalsScreen() {
                                                 <Text className="text-black text-lg font-bold flex-1" numberOfLines={1}>
                                                     {goal.name}
                                                 </Text>
+                                                {goal.currentAmount >= goal.amount && (
+                                                    <IconSymbol name="checkmark.circle.fill" size={28} color="#10b981" />
+                                                )}
                                                 <IconSymbol
                                                     name={expandedGoal[goal.id] ? "chevron.up" : "chevron.down"}
                                                     size={16}
@@ -289,7 +291,7 @@ export default function GoalsScreen() {
                                             </View>
 
                                             <View className="flex flex-col mt-2">
-                                                <View className="relative mb-6">
+                                                <View className="relative mb-2">
                                                     <View
                                                         style={{
                                                             left: `${Math.max(5, Math.min(95, percent))}%`,
@@ -328,32 +330,46 @@ export default function GoalsScreen() {
                                                 </View>
 
                                                 <View className="flex flex-row items-center justify-between">
-                                                    <Text className="text-black/50 text-xs">{formatMonthYear(goal.startDate)}</Text>
-                                                    <Text className="text-black/50 text-xs">{formatMonthYear(goal.endDate)}</Text>
+                                                    <View>
+                                                        <Text className="text-black/50 text-xs">0.00 zł</Text>
+                                                        <Text className="text-black/50 text-xs">{formatMonthYear(goal.startDate)}</Text>
+                                                    </View>
+                                                    <View>
+                                                        <Text className="text-black/50 text-xs text-right">{goal.amount} zł</Text>
+                                                        <Text className="text-black/50 text-xs">{formatMonthYear(goal.endDate)}</Text>
+                                                    </View>
                                                 </View>
                                             </View>
                                         </TouchableOpacity>
 
                                         {expandedGoal[goal.id] && (
-                                            <View className="px-4 pb-4 pt-0 border-t border-black/5">
-                                                {renderGoalHistory(goal)}
-                                                <View className="flex-row gap-3 mt-4">
-                                                    <TouchableOpacity
-                                                        onPress={() => handleEditGoal(goal)}
-                                                        className="flex-1 bg-[#ebe9fc] rounded-full py-3 flex-row items-center justify-center gap-2"
-                                                    >
-                                                        <IconSymbol name="pencil" size={20} color="#6b5aed" />
-                                                        <Text className="text-accent text-xl font-semibold">Edit</Text>
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        onPress={() => handleOpenUpdate(goal)}
-                                                        className="flex-1 bg-accent rounded-full py-3 flex-row items-center justify-center gap-2"
-                                                    >
-                                                        <IconSymbol name="plus" size={20} color="white" />
-                                                        <Text className="text-white text-xl font-semibold">Update</Text>
-                                                    </TouchableOpacity>
+                                            <>{goal.currentAmount >= goal.amount && (
+                                                <View className="px-4 pb-4 pt-0 flex flex-col items-center justify-center">
+                                                    <IconSymbol name="checkmark.circle.fill" size={28} color="#10b981" />
+                                                    <Text className="text-green-500 text-lg font-semibold">You did it!</Text>
+                                                    <Text className="text-green-500 text-lg font-semibold">You reached your goal!</Text>
                                                 </View>
-                                            </View>
+                                            )}
+                                                <View className="px-4 pb-4 pt-0 border-t border-black/5">
+                                                    {renderGoalHistory(goal)}
+                                                    <View className="flex-row gap-3 mt-4">
+                                                        <TouchableOpacity
+                                                            onPress={() => handleEditGoal(goal)}
+                                                            className="flex-1 bg-[#ebe9fc] rounded-full py-3 flex-row items-center justify-center gap-2"
+                                                        >
+                                                            <IconSymbol name="pencil" size={20} color="#6b5aed" />
+                                                            <Text className="text-accent text-xl font-semibold">Edit</Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            onPress={() => handleOpenUpdate(goal)}
+                                                            className="flex-1 bg-accent rounded-full py-3 flex-row items-center justify-center gap-2"
+                                                        >
+                                                            <IconSymbol name="plus" size={20} color="white" />
+                                                            <Text className="text-white text-xl font-semibold">Update</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </View>
+                                            </>
                                         )}
                                     </View>
                                 );

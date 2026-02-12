@@ -289,7 +289,7 @@ export default function BudgetScreen() {
 
                                         <View className="mt-3">
                                             <MotiProgressBar
-                                                progress={Math.min(percentageSpentToShow / 100, 1)}
+                                                progress={((budgetToShow.spent || 0) > (budgetToShow.budgetLimit || 0)) ? 1 : Math.min(percentageSpentToShow / 100, 1)}
                                                 color={getColorBySpent(budgetToShow.spent || 0, budgetToShow.budgetLimit || 0)}
                                                 height={10}
                                                 containerColor="white"
@@ -299,7 +299,7 @@ export default function BudgetScreen() {
                                                 className="text-xs font-semibold mt-1"
                                                 style={{ color: getColorBySpent(budgetToShow.spent || 0, budgetToShow.budgetLimit || 0) }}
                                             >
-                                                {percentageSpentToShow.toFixed(0)}% of your budget spent
+                                                {((budgetToShow.spent || 0) > (budgetToShow.budgetLimit || 0)) ? 100 : percentageSpentToShow.toFixed(0)}% of your budget spent
                                             </Text>
                                         </View>
                                     </View>
@@ -350,13 +350,13 @@ export default function BudgetScreen() {
                                                                 <Text className="text-white text-xl font-semibold">{formatDateShort(currentBudget?.dateStart.toString() || '')}&nbsp;-&nbsp;{formatDateShort(currentBudget?.dateEnd.toString() || '')}</Text>
                                                                 <View className={'flex flex-row items-center gap-2 w-1/2'}>
                                                                     <MotiProgressBar
-                                                                        progress={Math.min(percentageSpent / 100, 1)}
+                                                                        progress={((currentBudget?.spent || 0) > (currentBudget?.budgetLimit || 0)) ? 1 : Math.min(percentageSpent / 100, 1)}
                                                                         color={getColorBySpent(currentBudget?.spent || 0, currentBudget?.budgetLimit || 0)}
                                                                         height={10}
                                                                         containerColor="white"
                                                                         style={{ flex: 1 }}
                                                                     />
-                                                                    <Text className={'text-white text-[8px] font-semibold'}>{percentageSpent.toFixed(2)}% spent</Text>
+                                                                    <Text className={'text-white text-[8px] font-semibold'}>{((currentBudget?.spent || 0) > (currentBudget?.budgetLimit || 0)) ? 100 : percentageSpent.toFixed(2)}% spent</Text>
                                                                 </View>
                                                             </View>
                                                             <TouchableOpacity>
@@ -367,6 +367,7 @@ export default function BudgetScreen() {
                                                     </TouchableOpacity>
                                                     {previousBudgets.map((item) => {
                                                         const percentageSpent = (item.spent || 0) / (item.budgetLimit || 1) * 100;
+                                                        console.log(item.spent, item.budgetLimit, percentageSpent);
                                                         return (
                                                             <TouchableOpacity key={item.id} className={`${prevHistoryLoader === item.id || selectedBudgetId === item.id ? 'bg-accent/50' : 'bg-accent'} p-4 rounded-[20px] flex flex-row w-full ${prevHistoryLoader === item.id ? 'justify-center' : 'justify-between'} items-center`} disabled={prevHistoryLoader !== 0 || selectedBudgetId === item.id} onPress={() => getHistoryBudget(item.id)}>
                                                                 {prevHistoryLoader === item.id ? <ActivityIndicator size="large" color="white" /> : <>
@@ -374,13 +375,13 @@ export default function BudgetScreen() {
                                                                         <Text className="text-white text-xl font-semibold">{formatDateShort(item.dateStart.toString())}&nbsp;-&nbsp;{formatDateShort(item.dateEnd.toString())}</Text>
                                                                         <View className={'flex flex-row items-center gap-2 w-1/2'}>
                                                                             <MotiProgressBar
-                                                                                progress={Math.min(percentageSpent / 100, 1)}
+                                                                                progress={((item.spent || 0) > (item.budgetLimit || 0)) ? 1 : Math.min(percentageSpent / 100, 1)}
                                                                                 color={getColorBySpent(item.spent || 0, item.budgetLimit || 0)}
                                                                                 height={10}
                                                                                 containerColor="white"
                                                                                 style={{ flex: 1 }}
                                                                             />
-                                                                            <Text className={'text-white text-[8px] font-semibold'}>{percentageSpent.toFixed(2)}% spent</Text>
+                                                                            <Text className={'text-white text-[8px] font-semibold'}>{((item.spent || 0) > (item.budgetLimit || 0)) ? 100 : percentageSpent.toFixed(2)}% spent</Text>
                                                                         </View>
                                                                     </View>
                                                                     <TouchableOpacity>
