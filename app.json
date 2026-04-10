@@ -9,7 +9,25 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSExceptionDomains": {
+            "localhost": {
+              "NSTemporaryExceptionAllowsInsecureHTTPLoads": true
+            }
+          }
+        },
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.241245744544-nnneqsghllugnbkojmmv5tbg7grhpfnf"
+            ]
+          }
+        ]
+      },
+      "supportsTablet": true,
+      "bundleIdentifier": "com.igor-gardzielewski.savvio"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,14 +37,17 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.igor_gardzielewski.savvio"
     },
     "web": {
+      "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       "expo-router",
+      "@react-native-google-signin/google-signin",
       [
         "expo-splash-screen",
         {
@@ -43,6 +64,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a4942b37-f564-45d7-a873-7ea7d6e90859"
+      }
+    },
+    "owner": "igor_gardzielewski"
   }
 }
