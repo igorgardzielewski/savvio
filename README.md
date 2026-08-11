@@ -2,7 +2,7 @@
 
 A mobile personal finance app with an AI assistant that **builds its own interface** — instead of replying with a wall of text, the model composes each answer from a fixed set of UI blocks: charts, budget cards, transaction summaries.
 
-Built solo as an engineering thesis project at Lodz University of Technology: React Native (Expo) app + Java Spring Boot backend.
+Built solo as an engineering thesis project at Lodz University of Technology: React Native (Expo) app + [Java Spring Boot backend](https://github.com/igorgardzielewski/savvio-backend).
 
 ---
 
@@ -127,6 +127,6 @@ The app needs the backend for authentication, AI features and data. Native modul
 
 ## Status
 
-Feature-complete as a thesis project and defended; not published to the App Store or Google Play. The backend lives in a separate repository.
+Feature-complete as a thesis project and defended; not published to the App Store or Google Play. The backend lives in [igorgardzielewski/savvio-backend](https://github.com/igorgardzielewski/savvio-backend).
 
 An email-parsing feature — pulling purchase confirmations straight from a mailbox — was prototyped against the Gmail API and dropped: extraction quality on real messages was too unreliable to trust with someone's finances, and there was not enough labelled data to fine-tune a model. Receipt scanning from a photo turned out to be both more accurate and closer to how people actually record expenses.
